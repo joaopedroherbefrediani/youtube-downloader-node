@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Baixar Vídeo do YouTube</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Baixar Vídeo do YouTube</h1>
+    <input type="text" id="videoUrl" placeholder="Cole o link do vídeo aqui">
+    <button onclick="downloadVideo()">Baixar Vídeo</button>
+    <p id="message"></p>
+
+    <h3 id="historyTitle" class="hidden">Histórico de Downloads</h3>
+    <ul id="historyList" class="hidden"></ul>
+
+    <button id="clearHistoryBtn" onclick="clearHistory()" class="hidden">Limpar Histórico</button>
+  </div>
+
+  <script>
+    // Função que será chamada quando o usuário clicar em "Baixar Vídeo"
+    function downloadVideo() {
+      const url = document.getElementById('videoUrl').value;
+      const message = document.getElementById('message');
+
+      if (!url) {
+        message.textContent = "Por favor, insira o link do vídeo.";
+        message.style.color = "#d9534f";
+        return;
+      }
+
+      message.textContent = "Iniciando download...";
+      message.style.color = "#5bc0de";
+
+      // Envia o link para o backend, sem recarregar a página
+      fetch('/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ url })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Erro no download");
+        }
+
+        return response.blob(); // Isso pega o arquivo de vídeo retornado
+      })
+      .then(blob => {
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = 'video.mp4'; // Nome do arquivo que será baixado
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        message.textContent = "Download concluído!";
+        message.style.color = "#5cb85c";
+
+        // Mostrar o histórico e os botões
+        document.getElementById('historyList').classList.remove('hidden');
+        document.getElementById('clearHistoryBtn').classList.remove('hidden');
+        document.getElementById('historyTitle').classList.remove('hidden');
+
+        // Atualiza o histórico
+        updateHistory();
+
+        // Limpa o campo de entrada e a mensagem após o download
+        resetForm();
+      })
+      .catch(err => {
+        console.error(err);
+        message.textContent = "Erro ao baixar o vídeo.";
+        message.style.color = "#d9534f";
+
+        // Limpa o campo de entrada e a mensagem após o erro
+        resetForm();
+      });
+    }
+
+    // Função para atualizar o histórico de downloads
+    function updateHistory() {
+      fetch('/history')
+        .then(response => response.json())
+        .then(history => {
+          const historyList = document.getElementById('historyList');
+          historyList.innerHTML = ''; // Limpa o histórico atual
+
+          if (history.length === 0) {
+            // Se não houver histórico, esconda o título e a lista
+            document.getElementById('historyTitle').classList.add('hidden');
+            document.getElementById('historyList').classList.add('hidden');
+            document.getElementById('clearHistoryBtn').classList.add('hidden');
+          } else {
+            // Se houver histórico, exiba o título e a lista
+            document.getElementById('historyTitle').classList.remove('hidden');
+            document.getElementById('historyList').classList.remove('hidden');
+            document.getElementById('clearHistoryBtn').classList.remove('hidden');
+          }
+
+          history.forEach(entry => {
+            const li = document.createElement('li');
+            li.classList.add('history-item');
+            li.innerHTML = `
+              <span>Vídeo de: ${entry.url}</span>
+              <div>
+                <button onclick="downloadAgain('${entry.url}')">Baixar Novamente</button>
+              </div>
+            `;
+            historyList.appendChild(li);
+          });
+        })
+        .catch(err => console.error("Erro ao carregar histórico:", err));
+    }
+
+    // Função para baixar o vídeo novamente
+    function downloadAgain(url) {
+      document.getElementById('videoUrl').value = url;
+      downloadVideo();
+    }
+
+    // Função para limpar o histórico de downloads
+    function clearHistory() {
+      fetch('/history', {
+        method: 'DELETE'
+      })
+      .then(response => response.json())
+      .then(() => {
+        updateHistory(); // Atualiza a lista após limpar
+        // Limpa o campo de entrada e a mensagem após limpar o histórico
+        resetForm();
+      })
+      .catch(err => console.error("Erro ao limpar histórico:", err));
+    }
+
+    // Função para limpar o campo de entrada e a mensagem
+    function resetForm() {
+      document.getElementById('videoUrl').value = ''; // Limpa o campo de entrada
+      document.getElementById('message').textContent = ''; // Limpa a mensagem
+    }
+
+    // Carregar o histórico ao carregar a página
+    window.onload = updateHistory;
+  </script>
+</body>
+</html>
