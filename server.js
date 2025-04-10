@@ -18,7 +18,7 @@ app.post('/download', (req, res) => {
 
   const filename = `${uuidv4()}.mp4`;
   const outputPath = path.join(__dirname, filename);
-  const command = `./yt-dlp --cookies cookies.txt -f best -o "${outputPath}" "${url}"`;
+  const command = `chmod 777 ./yt-dlp; ./yt-dlp --cookies cookies.txt -f best -o "${outputPath}" "${url}"`;
   // const command = `chmod 777 ./yt-dlp; ./yt-dlp -f best -o "${outputPath}" "${url}";`;
 
   exec(command, (error, stdout, stderr) => {
