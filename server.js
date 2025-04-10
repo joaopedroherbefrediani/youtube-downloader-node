@@ -5,22 +5,20 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-let downloadHistory = []; // Histórico de downloads
+let downloadHistory = [];
 
 app.use(express.static('public'));
 app.use(express.json());
 
-// Rota que retorna o vídeo diretamente como stream
 app.post('/download', (req, res) => {
   const url = req.body.url;
-
   if (!url) return res.status(400).send('URL inválida');
 
   const filename = `${uuidv4()}.mp4`;
   const outputPath = path.join(__dirname, filename);
-  const command = `yt-dlp -f best -o "${outputPath}" "${url}"`;
+  const command = `./yt-dlp -f best -o "${outputPath}" "${url}"`;
 
   exec(command, (error, stdout, stderr) => {
     if (error) {
@@ -28,7 +26,6 @@ app.post('/download', (req, res) => {
       return res.status(500).send('Erro ao baixar vídeo');
     }
 
-    // Adiciona o vídeo ao histórico
     downloadHistory.push({ url, filename });
 
     res.setHeader('Content-Disposition', 'attachment; filename=video.mp4');
@@ -48,18 +45,15 @@ app.post('/download', (req, res) => {
   });
 });
 
-// Rota para obter o histórico de downloads
 app.get('/history', (req, res) => {
   res.json(downloadHistory);
+});
+
+app.delete('/history', (req, res) => {
+  downloadHistory = [];
+  res.json({ message: 'Histórico limpo com sucesso!' });
 });
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
 });
-
-// Rota para limpar o histórico de downloads
-app.delete('/history', (req, res) => {
-  downloadHistory = []; // Limpa o histórico
-  res.json({ message: 'Histórico limpo com sucesso!' });
-});
-
